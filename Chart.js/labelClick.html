@@ -1,0 +1,134 @@
+<html>
+
+<head>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.js">
+    </script>
+</head>
+
+<body>
+    <canvas id="myChart" width="200" height="200"></canvas>
+    <script>
+        var data = {
+            // Change number of labels to test label positioning variation:
+            // Including a multi-line label for testing
+            labels: ["Eating", ["Drinking", "water"], "Sleeping", "Designing", "Coding", "Cycling"],
+            datasets: [
+                {
+                    label: "1",
+                    data: [65, 59, 90, 81, 56, 55],
+                    backgroundColor: 'rgba(153, 153, 255, 0.1)'
+                },
+                {
+                    label: "2",
+                    data: [28, 48, 40, 19, 96, 27],
+                    backgroundColor: 'rgba(255, 153, 153, 0.1)'
+                }
+            ]
+        };
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var options = {
+            scale: {
+                pointLabels: {
+                    // Test label size variation:
+                    //fontSize: 50		
+                }
+            }
+        };
+        var myRadarChart = new Chart(ctx, {
+            type: 'radar',
+            data: data,
+            options: options,
+        });
+
+
+        document.getElementById("myChart").onclick = function (e) {
+            var helpers = Chart.helpers;
+            var scale = myRadarChart.scale;
+            var opts = scale.options;
+            var tickOpts = opts.ticks;
+
+            // Position of click relative to canvas.
+            var mouseX = e.offsetX;
+            var mouseY = e.offsetY;
+
+            var labelPadding = 5; // number pixels to expand label bounding box by
+
+            // get the label render position
+            // calcs taken from drawPointLabels() in scale.radialLinear.js
+            var tickBackdropHeight = (tickOpts.display && opts.display) ?
+                helpers.valueOrDefault(tickOpts.fontSize, Chart.defaults.global.defaultFontSize)
+                + 5 : 0;
+            var outerDistance = scale.getDistanceFromCenterForValue(opts.ticks.reverse ? scale.min : scale.max);
+            for (var i = 0; i < scale.pointLabels.length; i++) {
+                // Extra spacing for top value due to axis labels
+                var extra = (i === 0 ? tickBackdropHeight / 2 : 0);
+                var pointLabelPosition = scale.getPointPosition(i, outerDistance + extra + 5);
+
+                // get label size info.
+                // TODO fix width=0 calc in Brave?
+                // https://github.com/brave/brave-browser/issues/1738
+                var plSize = scale._pointLabelSizes[i];
+
+                // get label textAlign info
+                var angleRadians = scale.getIndexAngle(i);
+                var angle = helpers.toDegrees(angleRadians);
+                var textAlign = 'right';
+                if (angle == 0 || angle == 180) {
+                    textAlign = 'center';
+                } else if (angle < 180) {
+                    textAlign = 'left';
+                }
+
+                // get label vertical offset info
+                // also from drawPointLabels() calcs
+                var verticalTextOffset = 0;
+                if (angle === 90 || angle === 270) {
+                    verticalTextOffset = plSize.h / 2;
+                } else if (angle > 270 || angle < 90) {
+                    verticalTextOffset = plSize.h;
+                }
+
+                // Calculate bounding box based on textAlign
+                var labelTop = pointLabelPosition.y - verticalTextOffset - labelPadding;
+                var labelHeight = 2 * labelPadding + plSize.h;
+                var labelBottom = labelTop + labelHeight;
+
+                var labelWidth = plSize.w + 2 * labelPadding;
+                var labelLeft;
+                switch (textAlign) {
+                    case 'center':
+                        var labelLeft = pointLabelPosition.x - labelWidth / 2;
+                        break;
+                    case 'left':
+                        var labelLeft = pointLabelPosition.x - labelPadding;
+
+                        break;
+                    case 'right':
+                        var labelLeft = pointLabelPosition.x - labelWidth + labelPadding;
+                        break;
+                    default:
+                        console.log('ERROR: unknown textAlign ' + textAlign);
+                }
+                var labelRight = labelLeft + labelWidth;
+
+                // Render a rectangle for testing purposes
+                ctx.save();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 1;
+                // ctx.strokeRect(labelLeft, labelTop, labelWidth, labelHeight);
+                ctx.restore();
+
+                // compare to the current click
+                if (mouseX >= labelLeft && mouseX <= labelRight && mouseY <= labelBottom && mouseY >= labelTop) {
+                    alert(scale.pointLabels[i] + ' clicked');
+                    // Break loop to prevent multiple clicks, if they overlap we take the first one.
+                    break;
+                }
+            }
+        };
+
+
+    </script>
+</body>
+
+</html>
